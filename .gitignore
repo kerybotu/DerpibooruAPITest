@@ -1,0 +1,4 @@
+tempapikey.txt
+__pycache__/
+.pytest_cache/
+*.pyc
