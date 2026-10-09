@@ -85,4 +85,4 @@ Python 使用 `tools/derpibooru_client.py` 的单次请求、超时和直连→�
 
 ## 12. 当前探测结论
 
-本轮只读探测得到三个可建立直连但返回 `400` 的请求（v2 image show、v2 interacted、根路径 search），以及两个旧 JSON 路径的 TLS/代理连接失败。没有进行收藏、投票、watch、filter 或任何账户修改，因此这些 mutation 仍为 `UNKNOWN`。`400` 说明服务器收到了请求但不接受该形式；在没有响应 JSON 或当前网页请求对照前，不应进一步猜测参数。
+本轮只读探测中，v2 image show、v2 interacted、根路径 search 以及 `/{id}.json` 返回 Cloudflare HTTP `400`，正文 0 字节、没有 `Content-Type`。DNS、TCP 和 TLS 均成功；当前代理连接被拒绝。没有进行收藏、投票、watch、filter 或任何账户修改，因此这些 mutation 仍为 `UNKNOWN`。HTTP 400 不是连接失败；参数错误原因未被响应证据确认。详见 [CONNECTIVITY_DIAGNOSTICS.md](CONNECTIVITY_DIAGNOSTICS.md)。

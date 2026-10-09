@@ -16,6 +16,37 @@ DEFAULT_PROXY = os.getenv("DERPIBOORU_PROXY", "http://127.0.0.1:7898")
 NO_PROXY_FALLBACK = os.getenv("DERPIBOORU_NO_PROXY_FALLBACK") == "1"
 TIMEOUT = float(os.getenv("DERPIBOORU_TIMEOUT", "15"))
 
+CHALLENGE_MARKERS = (
+    "anubis", "i'm not a robot", "im not a robot", "captcha",
+    "human verification", "verify you are human", "access denied",
+)
+
+
+def classify_response(response: requests.Response) -> str:
+    """Classify challenge evidence without treating every 4xx as a challenge."""
+    content_type = (response.headers.get("Content-Type") or "").lower()
+    evidence = " ".join((response.url.lower(), content_type, response.text[:20000].lower()))
+    if any(marker in evidence for marker in CHALLENGE_MARKERS):
+        return "CHALLENGE_DETECTED"
+    if response.status_code in {401, 403, 429} and ("text/html" in content_type or response.history):
+        return "POSSIBLE_CHALLENGE"
+    return "NO_CHALLENGE_EVIDENCE"
+
+
+def redacted_headers(response: requests.Response) -> dict[str, str]:
+    secret_names = {"set-cookie", "cookie", "authorization", "proxy-authorization"}
+    return {name: ("<REDACTED>" if name.lower() in secret_names else value)
+            for name, value in response.headers.items()}
+
+
+def _request(method: str, url: str, *, proxies=None, **kwargs) -> requests.Response:
+    """Make an explicit direct/proxy request without inheriting system proxies."""
+    session = requests.Session()
+    session.trust_env = False
+    if proxies is not None:
+        kwargs["proxies"] = proxies
+    return session.request(method, url, **kwargs)
+
 
 def _key() -> Optional[str]:
     value = os.getenv("DERPIBOORU_API_KEY")
@@ -35,12 +66,12 @@ def request_with_fallback(method: str, path: str, *, params=None, json_body=None
     url = path if path.startswith("http") else BASE_URL.rstrip("/") + "/" + path.lstrip("/")
     request_kwargs = dict(params=params, json=json_body, headers=headers, cookies=cookies, timeout=timeout)
     try:
-        return requests.request(method, url, **request_kwargs)
+        return _request(method, url, **request_kwargs)
     except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout,
             requests.exceptions.ProxyError, requests.exceptions.SSLError):
         if NO_PROXY_FALLBACK:
             raise
-        return requests.request(method, url, proxies={"http": DEFAULT_PROXY, "https": DEFAULT_PROXY}, **request_kwargs)
+        return _request(method, url, proxies={"http": DEFAULT_PROXY, "https": DEFAULT_PROXY}, **request_kwargs)
 
 
 class DerpibooruClient:

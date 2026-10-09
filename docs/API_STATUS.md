@@ -19,10 +19,14 @@
 
 ## 本次低频探测记录（2026-10-09）
 
-- `GET /api/v2/images/show.json?ids=1`：直连建立成功，HTTP `400`，响应体为空；这是 **FAILED** 的请求格式/接口观察，不是代理故障。
-- `GET /api/v2/interactions/interacted.json?class=Image&ids=1`：直连建立成功，HTTP `400`，响应体为空；未执行 mutation。
-- `GET /search.json?q=pony&page=1`：直连建立成功，HTTP `400`，响应体为空。
-- `GET /1.json` 与 `GET /images/1.json`：直连 TLS 连接失败；一次代理 fallback 也失败。当前网络条件下无法判定资源或路径状态。
+- `GET /api/v2/images/show.json?ids=1`：显式直连，HTTP `400`，正文 0 字节，`Server: cloudflare`，无 `Content-Type`。接口格式原因未知。
+- `GET /api/v2/interactions/interacted.json?class=Image&ids=1`：显式直连，HTTP `400`，正文 0 字节；未执行 mutation。
+- `GET /search.json?q=pony&page=1`：显式直连，HTTP `400`，正文 0 字节。旧 OpenAPI 没有完整 search schema。
+- `GET /1.json`：当前重测结果为 HTTP `400`、正文 0 字节。旧版 TLS 失败不能代表当前状态。
+- DNS、TCP 443、TLS 1.3 均成功。代理 `127.0.0.1:7898` 的 TCP 连接被拒绝；不能据此判定目标 API 失效。
+- 所有上述当前请求均未发送 API Key；有 key/无 key 的响应差异尚未验证。
+
+详见 [CONNECTIVITY_DIAGNOSTICS.md](CONNECTIVITY_DIAGNOSTICS.md)。
 
 上述结果没有暴露凭据，也没有触发自动代理切换来处理 HTTP 4xx。
 

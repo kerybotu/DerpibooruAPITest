@@ -10,7 +10,10 @@ import re
 import sys
 from typing import Any
 
-from derpibooru_client import DerpibooruClient, response_json
+try:
+    from tools.derpibooru_client import DerpibooruClient, classify_response, redacted_headers, response_json
+except ModuleNotFoundError:
+    from derpibooru_client import DerpibooruClient, classify_response, redacted_headers, response_json
 
 SENSITIVE = re.compile(r"(key|token|cookie|csrf|authorization|session|secret)", re.I)
 
@@ -40,6 +43,9 @@ def main() -> int:
     elif args.command == "fave": response = client.favorite(args.image_id, args.value == "true")
     else: response = client.vote(args.image_id, False if args.value == "false" else args.value)
     print(f"[HTTP] status={response.status_code}")
+    print(f"[HTTP] final_url={response.url}")
+    print(f"[HTTP] redirects={len(response.history)} challenge={classify_response(response)}")
+    print(json.dumps(redacted_headers(response), ensure_ascii=True, indent=2))
     payload = response_json(response)
     print(json.dumps(redact(payload if payload is not None else response.text[:2000]), ensure_ascii=True, indent=2))
     return 0 if response.status_code < 500 else 1
